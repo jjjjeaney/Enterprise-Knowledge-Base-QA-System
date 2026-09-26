@@ -1,0 +1,49 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---------- 虚拟环境 ----------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------- 环境变量与密钥 ----------
+# .env 里有 DEEPSEEK / OPENROUTER / TAVILY 的 key 和 Postgres 连接串，不要提交
+.env
+.env.*
+!.env.example
+
+# ---------- IDE ----------
+.idea/
+*.iml
+.vscode/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+
+# ---------- 运行期数据 ----------
+# 用户上传的原始文档
+uploads/
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# ---------- 本机配置 ----------
+.claude/settings.local.json
+# 里面是本机 Python 解释器的绝对路径，别人机器上不存在，且会暴露本机目录结构。
+# 保留在本地即可（预览面板照常工作），不进版本库。
+.claude/launch.json
+
+# ---------- 本地调试脚本（含硬编码 API key，勿提交） ----------
+scripts/test_llm.py

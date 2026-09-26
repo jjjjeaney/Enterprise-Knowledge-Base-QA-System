@@ -1,0 +1,9 @@
+新增加了大量数据集
+
+指标	平均值
+Context Precision	0.6953
+Context Recall	0.9476
+Faithfulness	0.8458
+Answer Relevancy	0.4878
+
+多数情况下，答案已经在检索结果中，但生成阶段错误地返回了“未找到相关文档”。

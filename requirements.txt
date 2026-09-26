@@ -1,0 +1,69 @@
+# 运行时依赖。版本是本仓库验证过的组合（Python 3.12）。
+# 模块职责与外部服务见 docs/agent.md 第 2 节。
+#
+# 有几处"import 的名字 ≠ 包名"，别按模块名去 pip install：
+#   import jieba          -> 由 jieba3k 提供
+#   import docling        -> 由 docling-slim 提供
+#   import fastmcp        -> 由 fastmcp-slim 提供
+#   import PIL            -> 由 pillow 提供
+#
+# 安装：
+#   pip install -r requirements.txt
+
+# --- Web 服务 ---
+fastapi==0.141.1
+uvicorn==0.52.4
+
+# --- 配置 ---
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# --- 存储 ---
+SQLAlchemy==2.0.52
+# POSTGRESQL_URL 用的是 postgresql+asyncpg://，驱动由 SQLAlchemy 按名字动态加载，
+# 不会被 import 扫描发现——漏了它会在建 engine 时才炸。
+asyncpg==0.31.0
+pymilvus==3.0.1
+
+# --- 问答图与 LLM ---
+langchain==1.4.0
+langchain-core==1.6.2
+langchain-openai==1.1.9
+langchain-text-splitters==1.1.2
+langgraph==1.2.11
+openai==1.109.1
+
+# --- MCP 工具链路 ---
+fastmcp-slim==4.0.4
+mcp==2.2.0
+httpx==0.28.1
+# mcp / fastmcp 的传输层跑在 httpx2 上（由 mcp 带入）。和上一条的 httpx 是两个独立
+# 的包，异常类型也互不相通——core/retry.py 里那段"为什么不能按 httpx 异常类型判
+# 瞬时故障"就是针对它，别以为装了 httpx 就够了。
+httpx2==2.12.0
+anyio==4.15.1
+
+# --- 文档解析、向量化与重排 ---
+docling-slim==2.124.0
+docling-core==2.93.0
+pillow==12.3.0
+FlagEmbedding==1.4.2
+jieba3k==0.35.1
+rank-bm25==0.2.2
+aiofiles==24.1.0
+requests==2.34.2
+
+# --- 重排模型 / Docling 的底层依赖 ---
+# 上面装的是 CPU 版 torch。要用 GPU（os.environ 里的 CUDA 相关变量、use_fp16=True）
+# 需要从 PyTorch 官方源装对应 CUDA 版本，例如 cu126：
+#   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cu126
+torch==2.14.0
+transformers==5.16.1
+
+# --- 日志 ---
+loguru==0.7.3
+
+# --- 离线评估脚本专用（只跑 eval/ 才需要） ---
+ragas==0.4.3
+datasets==5.0.1

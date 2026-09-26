@@ -1,0 +1,783 @@
+/* ============================================================
+   设计 token
+   石墨 + 纸白 + 单一靛蓝强调色。层级靠发丝线和留白表达，
+   不用投影、不用粉彩填充。
+   ============================================================ */
+:root {
+  --ink: #2b3038;          /* 正文 */
+  --ink-soft: #4a5260;     /* 次级正文 */
+  --muted: #6b7280;        /* 元数据 */
+  --faint: #98a1ad;        /* 最弱：序号、占位 */
+  --line: #e4e6ea;         /* 发丝线 */
+  --line-strong: #d3d7de;  /* 控件描边 */
+  --paper: #ffffff;
+  --canvas: #f6f7f9;       /* 主内容区底色 */
+  --sidebar-bg: #fafbfc;
+  --panel-tint: #f4f6f9;   /* 提问面板 / 表头 */
+  --accent: #2c5282;
+  --accent-hover: #234268;
+  --accent-tint: #eef2f7;
+  --danger: #b42318;
+  --warning: #b25e09;
+  --success: #1f7a4d;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-body: 15px;
+  --fs-title: 16px;
+
+  /* 圆角按层级区分，避免"所有东西一个圆角" */
+  --r-panel: 6px;
+  --r-control: 4px;
+  --r-chip: 3px;
+
+  /* Element Plus 主题对齐：默认的 #409eff 和品牌色是两个蓝色，会互相打架 */
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: #6b86a8;
+  --el-color-primary-light-5: #96a9c1;
+  --el-color-primary-light-7: #c0cbda;
+  --el-color-primary-light-8: #d5dce6;
+  --el-color-primary-light-9: #eaeef3;
+  --el-color-primary-dark-2: var(--accent-hover);
+  --el-color-success: var(--success);
+  --el-color-warning: var(--warning);
+  --el-color-danger: var(--danger);
+  --el-color-error: var(--danger);
+
+  --el-border-radius-base: var(--r-control);
+  --el-border-radius-small: var(--r-chip);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-color-extra-light: var(--line);
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink-soft);
+  --el-text-color-secondary: var(--muted);
+  --el-text-color-placeholder: var(--faint);
+  --el-fill-color-light: var(--panel-tint);
+  --el-fill-color-blank: var(--paper);
+  --el-bg-color: var(--paper);
+  --el-bg-color-page: var(--canvas);
+  --el-font-size-base: var(--fs-base);
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', Arial, sans-serif;
+  --el-box-shadow-light: 0 2px 8px rgba(16, 24, 40, 0.08);
+
+  /* 表格自带一套变量，不覆盖会漏出组件库默认的浅蓝表头 */
+  --el-table-border-color: var(--line);
+  --el-table-header-bg-color: var(--panel-tint);
+  --el-table-header-text-color: var(--muted);
+  --el-table-text-color: var(--ink);
+  --el-table-row-hover-bg-color: #f6f8fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--el-font-family);
+  font-size: var(--fs-base);
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 时间戳、序号这类数字用等宽字形，纵向才对得齐 */
+.tabular,
+.thread-item__time,
+.citation-list__index,
+.documents-time {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 全局外壳 ---------- */
+.app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-nav {
+  flex: 0 0 48px;
+  height: 48px;
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+  padding: 0 20px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* 图标做成小方形徽记，是全站唯一的一处"标识" */
+.app-nav__brand .el-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-control);
+  background: var(--accent-tint);
+  color: var(--accent);
+  justify-content: center;
+}
+
+.app-nav__links {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.app-nav__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: var(--fs-base);
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.app-nav__link:hover {
+  color: var(--ink);
+}
+
+.app-nav__link.is-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 激活态用底部 2px 强调线，不用粉彩填充块 */
+.app-nav__link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 布局 ---------- */
+.chat-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--canvas);
+}
+
+.chat-header {
+  flex: 0 0 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- 侧边栏 ---------- */
+.thread-sidebar {
+  width: 248px;
+  flex: 0 0 248px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+.thread-sidebar__head {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.thread-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.thread-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  cursor: pointer;
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+
+.thread-item:hover {
+  background: #f1f3f6;
+}
+
+.thread-item.is-active {
+  background: var(--paper);
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+/* 激活项的左侧强调线，比整块填充更克制 */
+.thread-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+
+.thread-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.thread-item__title {
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-item__time {
+  font-size: var(--fs-xs);
+  color: var(--faint);
+  margin-top: 2px;
+}
+
+.thread-item__actions {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.thread-item:hover .thread-item__actions,
+.thread-item.is-active .thread-item__actions {
+  opacity: 1;
+}
+
+.thread-item__actions .el-icon {
+  padding: 4px;
+  border-radius: var(--r-control);
+  color: var(--muted);
+}
+
+.thread-item__actions .el-icon:hover {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+/* ---------- 消息区 ---------- */
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 24px 8px;
+}
+
+.message-list__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  /* 撑满可视高度，空状态才能真正居中（否则 height:100% 撞上 auto 高度会塌成内容高度） */
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* ---------- 头像 ---------- */
+.bubble-avatar {
+  flex: none;
+  margin-top: 2px;
+}
+
+.bubble-avatar.is-user {
+  background: var(--ink);
+  color: #fff;
+}
+
+.bubble-avatar.is-ai {
+  background: var(--accent-tint);
+  color: var(--accent);
+  border: 1px solid #dbe2ec;
+}
+
+/* 头像列固定 32px，面板最多占满剩余宽度 */
+.bubble {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 42px);
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--paper);
+  font-size: var(--fs-body);
+  line-height: 1.72;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+/* 提问用浅底面板，回答用白底面板：靠底色区分角色，不靠左右对齐 */
+.message-row.is-user .bubble {
+  background: var(--panel-tint);
+  white-space: pre-wrap;
+}
+
+.bubble.is-error {
+  border-color: #efc4c0;
+  background: #fdf4f3;
+  color: var(--danger);
+}
+
+.bubble--typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: typing-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes typing-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- 证据区（来源 + 核实状态） ---------- */
+.bubble__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.bubble__meta-label {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.citation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.citation-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+
+.citation-list__index {
+  flex: none;
+  width: 13px;
+  color: var(--faint);
+  text-align: right;
+}
+
+.citation-list__name {
+  color: var(--ink-soft);
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.verification {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.verification__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.verification.is-success {
+  color: var(--success);
+}
+
+.verification.is-warning {
+  color: var(--warning);
+}
+
+/* markdown 内容在面板内的排版 */
+.bubble__markdown > :first-child {
+  margin-top: 0;
+}
+
+.bubble__markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.bubble__markdown p,
+.bubble__markdown ul,
+.bubble__markdown ol {
+  margin: 0 0 10px;
+}
+
+.bubble__markdown h1,
+.bubble__markdown h2,
+.bubble__markdown h3 {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.bubble__markdown pre {
+  background: #1f242b;
+  color: #e4e8ed;
+  padding: 12px 14px;
+  border-radius: var(--r-control);
+  overflow-x: auto;
+  font-size: var(--fs-sm);
+}
+
+.bubble__markdown code {
+  font-family: 'Cascadia Code', Consolas, Monaco, monospace;
+  font-size: 13px;
+}
+
+.bubble__markdown :not(pre) > code {
+  background: #f1f3f6;
+  padding: 1px 5px;
+  border-radius: var(--r-chip);
+}
+
+.bubble__markdown table {
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble__markdown th,
+.bubble__markdown td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.bubble__markdown th {
+  background: var(--panel-tint);
+  font-weight: 600;
+}
+
+/* ---------- 输入区 ---------- */
+.chat-input {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  padding: 14px 24px 16px;
+}
+
+.chat-input__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.chat-input .el-textarea__inner {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* el 的 textarea 默认用 inset box-shadow 当边框，这里改成真边框，
+   hover/focus 的 inset ring 也要一并去掉，否则会和边框叠成双层 */
+.chat-input .el-textarea__inner:hover {
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+.chat-input .el-textarea__inner:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
+}
+
+.chat-input__hint {
+  max-width: 760px;
+  margin: 8px auto 0;
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+/* ---------- 空状态：不用插画 ---------- */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state__title {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+}
+
+.empty-state__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+.empty-note {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--faint);
+}
+
+/* ---------- 文档管理页 ---------- */
+.documents-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.documents-card {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  box-shadow: none;
+  /* 纵向 flex 容器里默认 flex-shrink:1：文档列表一长，两张卡片会被一起压扁，
+     上传卡片连自己的标题行都装不下（el-card 有 overflow:hidden，内容直接被裁掉）。
+     设为 0 让卡片保持自然高度，改由 .documents-page 滚动。 */
+  flex-shrink: 0;
+}
+
+.documents-card .el-card__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.documents-card .el-card__body {
+  padding: 16px;
+}
+
+.documents-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.documents-card__title {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.documents-card__tip {
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+.documents-card .el-upload-dragger {
+  padding: 32px 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-panel);
+  background: var(--sidebar-bg);
+}
+
+.documents-card .el-upload-dragger:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.documents-card .el-upload-dragger .el-icon--upload {
+  font-size: 40px;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+
+.documents-card .el-upload__text {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.documents-card .el-upload__text em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.documents-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.documents-progress {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.documents-progress .el-progress {
+  flex: 1;
+}
+
+.documents-progress__text {
+  flex: none;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.documents-filename {
+  cursor: default;
+  color: var(--ink);
+}
+
+/* 表格：靠发丝线，不用斑马纹 */
+.documents-card .el-table {
+  font-size: var(--fs-sm);
+}
+
+.documents-card .el-table th.el-table__cell {
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
+
+.documents-card .el-table td.el-table__cell,
+.documents-card .el-table th.el-table__cell {
+  padding: 9px 0;
+}
+
+.documents-card .el-button--danger.is-text {
+  color: var(--danger);
+}
+
+/* ---------- 无障碍 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 900px) {
+  .thread-sidebar {
+    width: 208px;
+    flex: 0 0 208px;
+  }
+
+  .message-list,
+  .chat-input {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .chat-header {
+    padding: 0 16px;
+  }
+
+  .citation-list__name {
+    max-width: 220px;
+  }
+}

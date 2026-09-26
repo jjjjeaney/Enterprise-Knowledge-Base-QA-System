@@ -1,0 +1,114 @@
+第一次测试：
+precision:61.79%
+recall:74.17%
+How long is the validity period for the telemetry driven runbook author certification from the operator training bootcamp?
+0.99999999995
+1.0
+
+
+What is the recommended two-stage process for rotating the signing credentials used by GPU image build and promotion pipelines, including how to cut over safely and roll back if something goes wrong?
+0.2916666666520833
+0.7
+
+
+What is the company policy for how long contractor access should last by default before it expires, according to the access and permissions playbook?
+0.49999999995
+1.0
+
+
+What is the expected turnaround time for security to approve access to a high risk internal tool role in Redwood's tool access governance process?
+0.0
+0.0
+
+
+What is the recommended liability cap language in the procurement legal triage SOP for vendor contracts (including the key exceptions and how the cap amount is determined)?
+0.9999999999
+0.3333333333333333
+
+
+In the customer docs plan for the opt-in quantization profile feature, what are the review roles required before the documentation can be merged?
+0.99999999995
+0.8
+
+
+In the enterprise tenant cutover go-live runbook, what latency threshold triggers escalation based on the 95th percentile being too high, and how long does it need to be sustained?
+0.3333333333
+1.0
+
+
+What is the operator procedure to put a private deployment tenant into local-only telemetry mode and how can you verify the mode afterward?
+0.99999999995
+0.75
+
+
+For regulated customer private VPC deployments, what is the tenant-facing monthly availability target for the inference endpoint?
+0.99999999995
+1.0
+
+
+What are the retention time windows for these lightweight kernel state snapshots (in-memory cache, indexed store, and any cold archive) used for post-incident diagnostics?
+0.9999999999
+1.0
+
+
+What are the default significance threshold and minimum sample size guidelines for deciding whether a model regression is actionable in the causal regression investigation handbook?
+0.3333333333
+1.0
+
+
+What is the standard amount of time a new hire buddy is expected to spend per day during the first two weeks when a long-term contractor is converted to a full-time employee?
+0.0
+0.0
+
+
+What is the rollout ramp schedule and time window used for the canary phase when validating adaptive degradation behavior in the Redwood serving runtime?
+0.0
+0.0
+
+
+In the PRD about adding managed orchestration for multi-model inference pipelines, what are the rollout milestones and target quarters for alpha, beta, and general availability?
+0.5833333333041666
+1.0
+
+
+When are production changes normally allowed to be deployed, and what are the default business hours change window?
+0.49999999995
+1.0
+
+
+What uptime and latency service level targets are stated for the hosted versus reserved/dedicated LLM inference offering in the SaaS go-to-market brief?
+0.36666666664833336
+1.0
+
+
+What is the procedure for an emergency rollback of a Serving Runtime release (Hosted and Dedicated)?
+0.8106150793549467
+1.0
+
+
+What is Redwood Inference's end-to-end process for rotating secrets and credentials used by production services (including emergency rotation)?
+0.9093537414836079
+0.3333333333333333
+
+
+How many weekly status updates for Project Orion marked the project as 'At Risk'?
+0.0
+1.0
+
+
+We saw quality regressions after enabling an INT8/mixed-precision variant and suspect KV-cache rounding on long-context requests. What request header can we set as a quick mitigation to bypass the KV cache, and in the dynamic quant handoff policy for the interactive-chat route what minimum KV-cache hit-rate and max sequence length are required before routing to a quant variant?
+0.9999999999
+0.14285714285714285
+
+In the Unified Inference Consumption Paradigm overview, what are the two unit primitives used for billing, and where is the referenced Confluence file that contains the pricing catalog and token definitions for them?
+0.5833333333041666
+1.0
+
+Which bank client got a temporary signoff to keep normal processing in Europe but let traffic switch to a US site only during disaster recovery drills or when the EU cluster is degraded, with payload logging turned off, and what were the start and end dates of that allowance?
+0.99999999998
+1.0
+
+What is the default time window the company targets for routine internal approvals across operational requests?
+0.9999999999
+1.0
+
