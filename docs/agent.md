@@ -333,7 +333,8 @@ LLM_RETRY_MAX_DELAY（默认 10）
 
 注意：
 
-- **`.env` 里曾包含的 key 仍留在 `master` 的历史提交里**（最早 `05426f9`，2026-09-06）。`.gitignore` 只阻止后续提交，不清除历史。公开仓库 `main` 用的是**全新历史**（单个初始提交，从当时的树重新提交），这些 key 和早期提交过的 `uploads/` 内部文档都不在其中；`master` 保留在本地仅作参考，**不要 push 它**。若要彻底了断，轮换那三个 key 即可；
+- **`.env` 里曾包含的 key 仍留在旧分支的历史提交里**（最早 `05426f9`，2026-09-06）。`.gitignore` 只阻止后续提交，不清除历史。公开仓库 `main` 用的是**全新历史**（单个初始提交，从当时的树重新提交），这些 key 和早期提交过的 `uploads/` 内部文档都不在其中。
+  本地仍带着这些历史的**三个分支不要 push**：`master`、`mcp-fault-tolerance-rework`、`backup/before-rollback-2026-09-11`。用 `git push origin main` 明确指定分支，不要用 `git push --all`；若要彻底了断，轮换那三个 key 之后再把它们删掉；
 - **本机相关的路径不写进代码**：`RERANKER_MODEL_PATH` 的代码默认值是可移植的 HF 模型 id，本机权重目录写在 `.env` 里覆盖；`.claude/launch.json` 含本机解释器绝对路径，已从索引移除并加进 `.gitignore`（文件保留在本地，预览面板照常工作）；
 - 变量模板见根目录 `.env.example`（`.gitignore` 里有 `!.env.example` 白名单）；
 - `UPLOAD_ROOT` 按模块位置推导，不受启动时工作目录影响（worker 的 CWD 不一定在仓库根）；
