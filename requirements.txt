@@ -3,8 +3,8 @@
 #
 # 有几处"import 的名字 ≠ 包名"，别按模块名去 pip install：
 #   import jieba          -> 由 jieba3k 提供
-#   import docling        -> 由 docling-slim 提供
-#   import fastmcp        -> 由 fastmcp-slim 提供
+#   import docling        -> 由 docling 提供
+#   import fastmcp        -> 由 fastmcp 提供
 #   import PIL            -> 由 pillow 提供
 #
 # 安装：
@@ -30,12 +30,26 @@ pymilvus==3.0.1
 langchain==1.4.0
 langchain-core==1.6.2
 langchain-openai==1.1.9
+# 必须有，而且很容易漏：core/llm.py 用 init_chat_model(model='deepseek-v4-flash')
+# 按模型名**动态**解析出 provider=deepseek，再去 import langchain_deepseek。
+# 代码里没有任何 `import langchain_deepseek`，所以静态扫 import 抓不到它，只有真跑起来
+# 才会炸：ImportError: Initializing ChatDeepSeek requires the langchain-deepseek package。
+# core/llm.py 里三处 init_chat_model 分别需要：deepseek、deepseek、openai（见下）。
+langchain-deepseek==1.1.0
 langchain-text-splitters==1.1.2
 langgraph==1.2.11
 openai==1.109.1
 
 # --- MCP 工具链路 ---
-fastmcp-slim==4.0.4
+# 装完整版 fastmcp，别装裸的 fastmcp-slim。fastmcp 4.0.4 本身只是个壳，它声明的依赖
+# 是 fastmcp-slim[client,server]——只有带上那两个 extra，client/server 需要的依赖
+# （py-key-value-aio、httpx2、mcp、starlette、authlib 等）才会被拉进来。裸装
+# fastmcp-slim 只有基础依赖，运行到 `from fastmcp import Client` 就会炸：
+#   ModuleNotFoundError: No module named 'key_value'
+#   ImportError: FastMCP client support is not installed.
+# 本仓库两端都在用（服务端 MCP/server.py 的 FastMCP、客户端 MCP/client.py 的 Client），
+# 两个 extra 都不能少。
+fastmcp==4.0.4
 mcp==2.2.0
 httpx==0.28.1
 # mcp / fastmcp 的传输层跑在 httpx2 上（由 mcp 带入）。和上一条的 httpx 是两个独立
@@ -45,7 +59,12 @@ httpx2==2.12.0
 anyio==4.15.1
 
 # --- 文档解析、向量化与重排 ---
-docling-slim==2.124.0
+# 装完整版 docling（= docling-slim[standard]），而不是裸的 docling-slim。裸装只有
+# docling-core，DocumentConverter().convert() 运行时真正 import 的 docling_ibm_models /
+# rapidocr / cv2 一个都没有，第一次解析文档就 ImportError。完整版会把 docling-ibm-models、
+# docling-parse、rapidocr（连带 opencv-python）一并带进来。paddle* / easyocr / tesserocr
+# 那些不在 standard extra 里，运行时也用不到，不用装。
+docling==2.124.0
 docling-core==2.93.0
 pillow==12.3.0
 FlagEmbedding==1.4.2
@@ -55,9 +74,10 @@ aiofiles==24.1.0
 requests==2.34.2
 
 # --- 重排模型 / Docling 的底层依赖 ---
-# 上面装的是 CPU 版 torch。要用 GPU（os.environ 里的 CUDA 相关变量、use_fp16=True）
-# 需要从 PyTorch 官方源装对应 CUDA 版本，例如 cu126：
+# 这里从 PyPI 装到的是 CUDA 13 构建的 torch（PyPI 上没有 CPU 版）。要用 GPU 的 cu126
+# 构建（和开发机、Docker 镜像一致），单独从 PyTorch 官方源装：
 #   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cu126
+# Docker 构建会先装 cu126 的 torch 再 grep 掉这一行，所以这里写不写都不影响镜像。
 torch==2.14.0
 transformers==5.16.1
 

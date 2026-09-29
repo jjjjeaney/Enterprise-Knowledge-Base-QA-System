@@ -21,6 +21,8 @@ ENV/
 .env
 .env.*
 !.env.example
+# 容器配置的模板（占位符）进版本库；真值那份 .env.docker 被上面的 .env.* 忽略、不提交。
+!.env.docker.example
 
 # ---------- IDE ----------
 .idea/
@@ -38,6 +40,11 @@ logs/
 *.sqlite
 *.sqlite3
 *.db
+
+# ---------- 模型权重 ----------
+# 本地下载的 bge-reranker-v2-m3（约 2.2GB），构建镜像时 COPY 进去当本地重排模型用。
+# 体积太大且是外部下载产物，不进版本库；换机器时用 models/ 目录在本地重新放一份即可。
+models/
 
 # ---------- 本机配置 ----------
 .claude/settings.local.json

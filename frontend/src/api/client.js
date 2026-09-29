@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-// 后端服务地址；如需改成局域网地址，改这里即可
-export const API_BASE_URL = 'http://127.0.0.1:8000'
+// 相对路径，走的是前端 nginx 的反代（见 frontend/nginx.conf 的 location /api/）。
+// 要换后端地址就改那里的 proxy_pass —— 不是改这里，这里不再有绝对地址。
+export const API_BASE_URL = '/api'
 
 const client = axios.create({
   baseURL: API_BASE_URL,

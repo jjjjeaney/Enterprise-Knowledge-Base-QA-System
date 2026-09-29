@@ -1,0 +1,41 @@
+# 密钥。Docker 不读 .gitignore —— 少了这两行，一句 `COPY . .` 就会把 .env 里的
+# DeepSeek / OpenRouter key 和数据库连接串烤进镜像层，push 出去就泄露了。
+.env
+.env.*
+
+# 版本库与 IDE
+.git
+.gitignore
+.idea
+.vscode
+.claude
+
+# Python 运行期产物
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 运行期数据：容器里靠卷挂载，不该固化进镜像
+uploads/
+logs/
+*.log
+*.sqlite*
+*.db
+
+# 离线评估。rag_result.jsonl / eval_result.jsonl 里存了检索原文和参考答案，
+# 体积可观，运行时不读。
+eval/
+
+# 文档、流程图和笔记本
+docs/
+*.ipynb
+
+# 本机调试脚本（含硬编码 API key，本来就在 .gitignore 里）
+scripts/test_llm.py
+
+# 前端不在 app 这个镜像里——它有自己的镜像和 compose 服务（frontend/Dockerfile，
+# 发布在宿主机 5173）。排除它是为了把构建上下文从几百 MB 压到几十 MB（node_modules
+# 尤其大）。所以这一行即使在前端容器化之后也要留着，不要以为"前端进容器了"就该删掉。
+frontend/

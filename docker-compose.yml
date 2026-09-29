@@ -1,0 +1,95 @@
+# 单容器运行。宿主机上需要已经有 PostgreSQL 和 Milvus 在跑——两个都通过
+# host.docker.internal 连（容器里的 127.0.0.1 指的是容器自己）。
+#
+# 首次启动：
+#   1. 复制 .env.docker.example 成 .env.docker，填好里面的 DEEPSEEK_API_KEY /
+#      OPENROUTER_API_KEY / POSTGRESQL_URL（.env.docker 已被 gitignore，不会提交）
+#   2. 在要用的库上把 schema 建出来（表 + collection）：
+#        docker compose run --rm app python -m db.init_db
+#   3. docker compose up -d
+#
+# 前端也在编排里（frontend 服务，见下）。**对外只有一个入口：5173** —— 那个 nginx
+# 既发前端静态文件，又把 /api 反代给 app 容器（见 frontend/nginx.conf）。所以前后端同源，
+# 不再需要 CORS，也不再限制必须用 localhost（127.0.0.1:5173 一样能打开）。
+#
+# app 因此**不再发布 8000 端口**。带来两个后果：宿主机 `npm run dev` 连不到后端、
+# 已经不可用（前端开发得走容器）；接口文档改从 http://localhost:5173/api/docs 进。
+
+services:
+  app:
+    build: .
+    image: ekbqas:latest
+
+    # 容器视角的配置。为什么不直接用根目录那份 .env，见 .env.docker 顶部注释。
+    env_file:
+      - .env.docker
+
+    # 8001 是 MCP server，监听 127.0.0.1 且只被同一个容器里的 API 调用，不发布。
+    # 8000 也**不发布**：前端 nginx 的 proxy_pass 按服务名直连 app:8000，宿主机不需要
+    # 这个端口（要恢复本机开发再把它加回来，见 Dockerfile 末尾的说明）。
+
+    # 上传的原始文件。API 负责写、worker 读完删（app/worker.py 的 _remove_item_file），
+    # 两者在同一个容器里所以天然共享文件系统。但仍然要挂卷：容器一旦重建，/app/uploads
+    # 会空掉，而 ingest_job_items 里处于 pending 的行还指向那些路径，worker 领到就是
+    # 文件不存在。
+    volumes:
+      - uploads:/app/uploads
+
+    # 让 host.docker.internal 在容器内解析到宿主机网关。Linux 上不写这条就没有这个
+    # 域名（Docker Desktop 自带，所以只在 Windows/Mac 上跑可以不要，留着兼容 Linux）。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # 这个容器是一棵进程树（uvicorn 底下还有 worker 和 MCP 子进程），需要 init 回收。
+    init: true
+
+    # 默认的 10s 不够用：app/main.py 的 lifespan 收尾最多要 join worker 线程 25s。
+    # 时间给不够的话每次停容器都变成 SIGKILL，正在解析的文档白跑一轮（租约能捡回，
+    # 但要重新解析）。
+    stop_grace_period: 40s
+
+    # 内存天花板。必须压在 Docker Desktop 给 WSL2 虚拟机的总内存之下——物理内存
+    # 15.7GB 时 Docker 默认只分给 VM 7.6GB（`docker info` 的 MemTotal）。
+    # 设一个超过 7.6g 的值是没有意义的：先撑爆的是那台 VM，而 VM 级别的 OOM 会波及
+    # 整个 Docker，不只是这个容器。6g 留出了 VM 自身和 Docker daemon 的开销。
+    #
+    # 这个值对应 .env.docker 里 INGEST_WORKERS=1 的配置（API + 1 个 worker + MCP）。
+    # 想把 worker 调多，先确认 VM 内存够，再一起往上调。
+    #
+    # 注意这里管的是**内存**。显存是另一套：实测 reranker 占 1.1GB、每个 worker 的
+    # Docling 占 0.4–0.7GB，8GB 的卡不构成瓶颈。
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+
+        # GPU 设备预留。前提是宿主机有可用的 NVIDIA 驱动；WSL2 下透传给容器的是
+        # /dev/dxg，不是 /dev/nvidia*（别拿 /dev/nvidia* 判断有没有透传成功）。
+        #
+        # 没有 GPU 的机器上这三行会让容器起不来。要在那种机器上跑，删掉这一段，
+        # 并且把镜像换成 CPU 版 torch——两者要一起改，只删这里的话镜像里还是
+        # CUDA 版 torch，会带着几个 GB 用不上的 nvidia-* 依赖跑在 CPU 上。
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # 前端：nginx 发一份 vite build 出来的静态文件。镜像几十 MB，和 app 那个 17.6GB
+  # 完全独立——改前端只重建这里，几秒完事，不去碰 app 镜像那几个 GB 的依赖层。
+  frontend:
+    build:
+      context: ./frontend
+    image: ekbqas-frontend:latest
+
+    # 容器内 nginx 听 80，发布成宿主机的 5173。为什么是 5173 见文件头那段。
+    ports:
+      - "5173:80"
+
+    # 这里是**真依赖**，不只是顺序：nginx 的 proxy_pass 按服务名连 app:8000
+    # （见 frontend/nginx.conf），app 起不来这个容器就转发不了。
+    depends_on:
+      - app
+
+volumes:
+  uploads:

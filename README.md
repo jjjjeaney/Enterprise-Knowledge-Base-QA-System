@@ -46,24 +46,36 @@ flowchart TB
     MCP --> DB
 ```
 
-问答图的走向：
+下面是问答图的完整流程图。它**不是手画的**，而是 LangGraph 从 `graph/main.py` 编译出的图直接渲染的（`test.ipynb` 里画的就是同一张图）：
 
-```mermaid
-flowchart LR
-    START --> classify["classify_query<br/>(是否需要检索/改写/工具)"]
-    classify -->|直接回答| direct[direct_generate_answer]
-    classify -->|检索| rw[rewrite_query_standalone] --> ret[enterprise_retrieve<br/>向量+BM25+RRF]
-    ret --> rr["rerank<br/>阈值筛选 + 兜底"]
-    rr -->|无相关文档| rw2[rewrite_query_retry] --> ret
-    rr --> gen[generate_by_rag] --> verify{verify_answer}
-    verify -->|不通过| rw2
-    verify -->|通过| persist[persist_conversation]
-    classify -->|工具| tool["tool_use<br/>MCP 决策+执行+回灌修复"]
-    tool --> chk{check_tool_result}
-    chk -->|不够| tool
-    chk -->|够了| gen2[generate_by_tool] --> persist
-    direct --> persist
+![问答图](docs/images/qa-graph.png)
+
+改动 `graph/main.py` 的节点或边之后，这张图**不会自动更新**，要重新渲染覆盖，否则它会和图结构脱节：
+
+```bash
+python -c "from graph.main import get_app; get_app().get_graph().draw_mermaid_png(output_file_path='docs/images/qa-graph.png')"
 ```
+
+渲染走 mermaid.ink 在线服务（`draw_mermaid_png` 的默认 `draw_method` 就是它），需要能访问外网。想拿可 diff 的文本版做前后对比，用 `print(get_app().get_graph().draw_mermaid())`；`test.ipynb` 里也是这段代码。
+
+各节点的职责（`graph/node.py`）：
+
+| 节点 | 作用 |
+| --- | --- |
+| `classify_query` | 判断这次提问是否需要检索 / 是否需要先改写 / 是否需要调工具 |
+| `rewrite_query_standalone` | 检索前的改写：把追问补全成能独立检索的查询。它不是失败重试，不占 `rewrite_times` 预算 |
+| `enterprise_retrieve` | 混合检索：向量 + BM25 双路召回，RRF 融合 |
+| `rerank` | 逐篇打分，主阈值筛选；一篇都不过时降级到兜底阈值重筛 |
+| `rewrite_query_retry` | 失败后的重写：相关性不达标或答案验证不通过时触发，**计入** `rewrite_times` |
+| `generate_by_rag` | 基于检索到的片段生成回答 |
+| `verify_answer` | 校验答案是否有上下文支撑，不通过就回到重写 |
+| `direct_generate_answer` | 不检索也不调工具，直接回答 |
+| `tool_use` | 调 MCP 工具（决策 → 执行 → 失败则把工具 schema 回灌给模型重新决策） |
+| `check_tool_result` | 判断工具结果够不够，不够就再调一轮 |
+| `generate_by_tool` | 基于工具结果生成回答 |
+| `persist_conversation` | 把这一轮问答写进 `messages` 表 |
+
+路由分支由 `graph/routes.py` 决定。注意 `classify_query` 出来的是**四条互斥的路径**，其中 `direct_retrieval_path`（直接检索）和 `rewrite_path`（先改写再检索）是并列的两条——不是所有检索都要先改写，这取决于分类结果里的 `need_rewrite`。
 
 ## 技术栈
 
@@ -137,6 +149,86 @@ cd frontend && npm install && npm run dev
 默认 `http://localhost:5173`（与后端 CORS 白名单一致）。后端地址在 `frontend/src/api/client.js` 配置。
 
 访问 `http://127.0.0.1:8000/docs` 可以看到后端接口文档。
+
+## Docker 部署
+
+后端整套（API + ingest worker + MCP server）打成一个镜像。这三者是同一棵进程树——
+`app/main.py` 的 lifespan 会把 worker 监督器和 MCP server 一并拉起来，所以容器里
+只需要跑 uvicorn。前端不在这个镜像里——它是编排里另一个独立服务（见下面第 5 步），
+自己一个几十 MB 的镜像，改前端不会碰到后端那几个 GB 的依赖层。
+
+### 1. 前置
+
+宿主机上要已经有 PostgreSQL 和 Milvus 在跑。容器通过 `host.docker.internal` 连它们
+（容器里的 `127.0.0.1` 指的是容器自己，连不到宿主机的服务）。
+
+### 2. 配置
+
+编辑仓库根目录的 `.env.docker`。必填 `DEEPSEEK_API_KEY`、`OPENROUTER_API_KEY` 和
+`POSTGRESQL_URL`。
+
+这个文件放的是**容器视角**的值，别拿根目录那份 `.env` 直接顶替：那里的 `127.0.0.1`
+和 `RERANKER_MODEL_PATH=D:\AIModels\...` 在 Linux 容器里都不成立。文件顶部注释说明了
+两件容易踩的事——为什么不能留 `VAR=` 这种空值行，以及为什么 `RERANKER_MODEL_PATH`
+干脆不写（不写才能落到默认值，用构建时已经下好的权重）。
+
+### 3. 建 schema
+
+全新的库要先建表和 collection：
+
+```bash
+docker compose run --rm app python -m db.init_db
+```
+
+幂等：已存在的表和 collection 整块跳过，重复跑不会出错也不会改动已有结构。
+
+### 4. 起服务
+
+```bash
+docker compose up -d
+```
+
+### 5. 前端
+
+前端也在这个编排里，是独立的 `frontend` 服务：那个 nginx 既发 `vite build` 出来的静态
+文件，又把 `/api` 反代给 app 容器（配置在 `frontend/nginx.conf`）。
+
+**对外只有一个入口，打开 `http://localhost:5173`**（`127.0.0.1:5173` 也一样——前后端
+同源，不涉及 CORS）。前端的请求走相对路径 `/api`，由这个 nginx 转发，所以 app 容器
+**不需要发布 8000 端口**。接口文档在 `http://localhost:5173/api/docs`。
+
+`frontend/nginx.conf` 里有两个默认值必须显式调大，否则会在交付之后才发现：
+`client_max_body_size`（默认只有 1MB，不改的话传文档直接 413）和 `proxy_read_timeout`
+（默认 60s，而 `/chat` 要跑完整的 RAG + LLM，前端 axios 等的是 180s）。
+
+⚠️ 宿主机上的 `npm run dev` 现在连不到后端（8000 没发布），**已经不可用**；前端开发走容器。
+
+### 关于这个镜像
+
+**模型权重在构建期就下好了**，运行时不再联网——Docling 的版面/表格模型、以及
+rerank 用的 `BAAI/bge-reranker-v2-m3`。代价是构建要下载几个 GB、耗时较长；换来的是
+容器可以离线冷启动。（OCR 那几个权重是 `rapidocr` 包自带的，pip 装上就有，不用额外下。）
+
+**torch 是 CUDA 版**（cu126，和开发机装的是同一个）。注意 PyPI 上并没有 CPU 版 torch——
+`pip install torch==2.14.0` 拿到的是 CUDA 13 构建，CPU 版在 `download.pytorch.org/whl/cpu`
+那个专用源上。基础镜像不用换成 `nvidia/cuda`，CUDA 运行时会以 `nvidia-*` 这些 pip 包进来。
+
+宿主机侧只要 Docker Desktop 的 GPU 透传可用就行。WSL2 下透传给容器的是 `/dev/dxg`，
+**别拿 `/dev/nvidia*` 判断有没有成功**——WSL2 不用那套设备节点，`ls /dev/nvidia*` 永远是空的。
+要出纯 CPU 镜像：加 `--build-arg TORCH_INDEX=https://download.pytorch.org/whl/cpu`，
+同时删掉 `docker-compose.yml` 里的 GPU 预留。
+
+**资源。** 瓶颈是**内存**，不是显存。每个 ingest worker 常驻 1.5–3GB，所以 `.env.docker`
+里 `INGEST_WORKERS` 用的是 1 而不是默认的 2，compose 里容器上限设的 6g。
+
+这个上限必须压在 WSL2 虚拟机总内存之下，而 WSL2 默认只给物理内存的一半（这台机器
+15.7GB → 7.6GB）。想在 Windows + Docker Desktop 上调大，得改仓库外的
+`C:\Users\<你>\.wslconfig`——Docker Desktop 用 WSL2 后端时没有内存滑块，那是唯一的开关，
+而且要 `wsl --shutdown` 才生效。注意两个副作用：它会同时作用于所有 WSL2 发行版；WSL2
+也不会主动把不用的内存还给 Windows，调大后宿主机可用内存会明显变少。
+
+显存实测：reranker 1.1GB，每个 worker 的 Docling 约 0.4–0.7GB（用一份纯文字小 PDF 测得，
+带表格/图片的文档会触发更多模型）。8GB 的卡不构成瓶颈。
 
 ## 设计要点
 
